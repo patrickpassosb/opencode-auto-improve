@@ -1,0 +1,35 @@
+{
+  "name": "opencode-auto-improve",
+  "version": "0.1.0",
+  "description": "Auto-capture skills and durable memory from your sessions, present them for approval, and prune what is no longer useful — opencode learns like Hermes.",
+  "main": "index.js",
+  "exports": {
+    "./server": "./index.js",
+    "./tui": "./index.js"
+  },
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "opencode",
+    "plugin",
+    "skills",
+    "memory",
+    "learning",
+    "self-improvement",
+    "agents"
+  ],
+  "files": [
+    "index.js",
+    "plugins/",
+    "learning/",
+    "command/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "bun test test/"
+  },
+  "engines": {
+    "bun": ">=1.0"
+  }
+}
