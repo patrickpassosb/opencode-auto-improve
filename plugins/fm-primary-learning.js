@@ -4,14 +4,18 @@
 // plugins use; this plugin only reads, never prompts, so it cannot conflict).
 // Classifies what happened in the finished session and writes candidates to
 // ~/.agents/learning-staging/{skills,memory}. Never writes to the live skill
-// library — promotion happens only on captain approval via /learn-review.
+// library — promotion happens only on captain approval.
+//
+// When new candidates are staged, the plugin proactively injects a message
+// into the session presenting them and asking the captain to approve or
+// reject each one. The captain never needs to run /learn-review.
 //
 // Also injects durable memory facts (~/.agents/memory/facts.md) into the first
 // user prompt of a new session, following the sessionstart-nudge pattern.
 //
 // MIT — self-contained, no opencode core changes.
 
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { FmLearning } from "../learning/fm-learning-core.js"
 
@@ -26,6 +30,23 @@ function memoryFacts() {
     .map((line) => line.trim())
     .filter((line) => line.startsWith("- "))
     .join("\n")
+}
+
+function stagedCandidates() {
+  const out = { skills: [], memory: [] }
+  try {
+    const skillsDir = FmLearning.stagingSkills()
+    const memoryDir = FmLearning.stagingMemory()
+    for (const f of readdirSync(skillsDir)) {
+      if (f.endsWith(".json")) out.skills.push(f.replace(/\.json$/, ""))
+    }
+    for (const f of readdirSync(memoryDir)) {
+      if (f.endsWith(".json")) out.memory.push(f.replace(/\.json$/, ""))
+    }
+  } catch {
+    // best-effort
+  }
+  return out
 }
 
 export const FmPrimaryLearning = async ({ client }) => {
@@ -81,6 +102,27 @@ export const FmPrimaryLearning = async ({ client }) => {
             join(FmLearning.stagingMemory(), `${candidate.name}.json`),
             candidate,
           )
+        }
+
+        // Proactively present newly staged candidates and ask for approval.
+        if (skills.length > 0 || memory.length > 0) {
+          const lines = []
+          for (const c of skills) lines.push(`[skill] ${c.name} — ${c.description}`)
+          for (const c of memory) lines.push(`[memory] ${c.fact}`)
+          const text =
+            `New learning candidates were captured from this session:\n\n` +
+            lines.join("\n") +
+            `\n\nPresent these to the captain and ask whether to approve or reject each one (yes/no per item, or "all"/"none"). ` +
+            `On approval, promote: skill → ~/.agents/skills/<name>/SKILL.md (description ≤ 200 chars), memory → ~/.agents/memory/facts.md. ` +
+            `On rejection, discard the staged file. Never promote without the captain's explicit approval.`
+          try {
+            await client.session.promptAsync({
+              path: { id: sessionID },
+              body: { parts: [{ type: "text", text }] },
+            })
+          } catch {
+            // Presentation is best-effort; never break the turn.
+          }
         }
       } catch {
         // Capture is best-effort; never break the turn.

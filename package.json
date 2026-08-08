@@ -1,7 +1,7 @@
 {
   "name": "opencode-auto-improve",
-  "version": "0.1.0",
-  "description": "Auto-capture skills and durable memory from your sessions, present them for approval, and prune what is no longer useful — opencode learns like Hermes.",
+  "version": "0.2.0",
+  "description": "Auto-capture skills and durable memory from your sessions, present them for approval, and prune what is no longer useful \u2014 opencode learns like Hermes.",
   "main": "index.js",
   "exports": {
     "./server": "./index.js",
