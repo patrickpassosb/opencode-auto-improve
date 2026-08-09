@@ -60,15 +60,13 @@ export const FmPrimaryLearning = async ({ client }) => {
         if (!facts) return
         try {
           await client.session.promptAsync({
-            path: { id: sessionID },
-            body: {
-              parts: [
-                {
-                  type: "text",
-                  text: `Durable facts about the captain (from ~/.agents/memory/facts.md):\n\n${facts}\n\nUse them when relevant; do not repeat them back.`,
-                },
-              ],
-            },
+            sessionID,
+            parts: [
+              {
+                type: "text",
+                text: `Durable facts about the captain (from ~/.agents/memory/facts.md):\n\n${facts}\n\nUse them when relevant; do not repeat them back.`,
+              },
+            ],
           })
         } catch {
           // Injection is best-effort; never break session start.
@@ -82,11 +80,11 @@ export const FmPrimaryLearning = async ({ client }) => {
       capturedSessions.add(sessionID)
 
       try {
-        const result = await client.session.messages({ path: { id: sessionID } })
+        const result = await client.session.messages({ sessionID })
         const messages = result?.data ?? result
         if (!Array.isArray(messages) || messages.length === 0) return
 
-        const session = await client.session.get({ path: { id: sessionID } }).catch(() => null)
+        const session = await client.session.get({ sessionID }).catch(() => null)
         const info = session?.data ?? session
 
         FmLearning.ensureDirs()
@@ -117,8 +115,8 @@ export const FmPrimaryLearning = async ({ client }) => {
             `On rejection, discard the staged file. Never promote without the captain's explicit approval.`
           try {
             await client.session.promptAsync({
-              path: { id: sessionID },
-              body: { parts: [{ type: "text", text }] },
+              sessionID,
+              parts: [{ type: "text", text }],
             })
           } catch {
             // Presentation is best-effort; never break the turn.
