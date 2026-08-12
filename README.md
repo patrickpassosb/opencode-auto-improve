@@ -25,9 +25,11 @@ That's it. Opencode auto-installs it from npm (via Bun) at startup.
    - neither → nothing
    Candidates are staged in `~/.agents/learning-staging/`. The plugin never writes to your live skill library.
 
-2. **Approve** — run `/learn-review`. The agent presents candidates in chat ("3 new skills, 2 memory facts — approve?"). You answer yes/no per item. You never browse folders: the agent curates, you approve. On approval:
+2. **Approve** — no command needed. At the end of a session that produced candidates, the plugin injects a chat message presenting each one ("[skill] <name> — <description>" / "[memory] <fact>") and asks you to approve or reject each (yes/no per item, or "all"/"none"). You never browse folders: the agent curates, you approve. On approval:
    - skill → `~/.agents/skills/<name>/SKILL.md` (description ≤ 200 chars to keep the discovery index lean)
    - memory → `~/.agents/memory/facts.md` (injected at session start on the next launch)
+   - The staged JSON is renamed `.promoted` (or `.rejected` for rejections) so it is not presented again.
+   Duplicate candidates (same fact already in `facts.md`, or a skill with the same name already staged/live) are never staged twice.
 
 3. **Prune** — the weekly checkup is `/audit-skills` (the companion skill): classify keep/remove/merge, propose removals, you approve. "Less is more" — a skill that is not useful must be removed.
 
@@ -37,8 +39,8 @@ That's it. Opencode auto-installs it from npm (via Bun) at startup.
 opencode-auto-improve/
   index.js                        plugin entry (exports FmPrimaryLearning)
   plugins/fm-primary-learning.js  capture + memory injection (session.idle, session.created)
-  learning/fm-learning-core.js    classify, stage, promote (shared logic)
-  command/learn-review.md         /learn-review command (present + approve)
+  learning/fm-learning-core.js    classify, stage, promote, dedup (shared logic)
+  command/learn-review.md         optional /learn-review command (present + approve)
 ```
 
 Runtime state (independent of any other tool's data dirs):

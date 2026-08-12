@@ -38,14 +38,18 @@ Runtime state (independent of firstmate's data dirs, per the captain's choice):
    Candidates land in `~/.agents/learning-staging/`. The plugin never writes to
    the live skill library.
 
-2. **Approval** — `/learn-review` presents staged candidates in chat ("3 new
-   skills, 2 memory facts from today — approve?"). The captain answers yes/no
-   per item. The captain never browses the staging folder: the agent curates,
-   the captain approves. On approval the agent promotes:
+2. **Approval** — no command needed. When candidates are staged, the plugin
+   injects a chat message into the session presenting each one ("[skill]
+   <name> — <description>" / "[memory] <fact>") and asks the captain to approve
+   or reject each (yes/no per item, or "all"/"none"). The captain never browses
+   the staging folder: the agent curates, the captain approves. On approval the
+   agent promotes:
    - skill → `~/.agents/skills/<name>/SKILL.md` (description ≤ 200 chars)
    - memory → `~/.agents/memory/facts.md` (deduped line)
    Staged files are renamed `.promoted` / `.rejected` so they are not presented
-   again.
+   again. The optional `/learn-review` command still works for on-demand review.
+   Duplicate candidates (same fact already live, or a skill name already
+   staged/live) are never staged twice.
 
 3. **Memory injection** — on `session.created`, the plugin reads
    `~/.agents/memory/facts.md` and injects the facts into the first user prompt
@@ -59,8 +63,8 @@ Runtime state (independent of firstmate's data dirs, per the captain's choice):
 ## Testing
 
 ```bash
-cd packages/opencode
-bun test test/learning/learning.test.ts
+cd /tmp/opencode/opencode-auto-improve
+bun test test/
 ```
 
 Tests cover classification, staging, promotion, dedupe, rejection, the

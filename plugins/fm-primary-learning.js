@@ -38,10 +38,14 @@ function stagedCandidates() {
     const skillsDir = FmLearning.stagingSkills()
     const memoryDir = FmLearning.stagingMemory()
     for (const f of readdirSync(skillsDir)) {
-      if (f.endsWith(".json")) out.skills.push(f.replace(/\.json$/, ""))
+      if (!f.endsWith(".json")) continue
+      const candidate = FmLearning.readJson(join(skillsDir, f))
+      if (candidate?.name) out.skills.push(candidate)
     }
     for (const f of readdirSync(memoryDir)) {
-      if (f.endsWith(".json")) out.memory.push(f.replace(/\.json$/, ""))
+      if (!f.endsWith(".json")) continue
+      const candidate = FmLearning.readJson(join(memoryDir, f))
+      if (candidate?.fact) out.memory.push(candidate)
     }
   } catch {
     // best-effort
@@ -89,13 +93,15 @@ export const FmPrimaryLearning = async ({ client }) => {
 
         FmLearning.ensureDirs()
         const { skills, memory } = FmLearning.classifySession({ messages, session: info })
-        for (const candidate of skills) {
+        const newSkills = skills.filter((c) => !FmLearning.alreadyCaptured("skills", c))
+        const newMemory = memory.filter((c) => !FmLearning.alreadyCaptured("memory", c))
+        for (const candidate of newSkills) {
           FmLearning.writeJson(
             join(FmLearning.stagingSkills(), `${candidate.name}.json`),
             candidate,
           )
         }
-        for (const candidate of memory) {
+        for (const candidate of newMemory) {
           FmLearning.writeJson(
             join(FmLearning.stagingMemory(), `${candidate.name}.json`),
             candidate,
@@ -103,12 +109,18 @@ export const FmPrimaryLearning = async ({ client }) => {
         }
 
         // Proactively present newly staged candidates and ask for approval.
-        if (skills.length > 0 || memory.length > 0) {
+        const staged = stagedCandidates()
+        const all = [
+          ...staged.skills.map((c) => ({ kind: "skill", ...c })),
+          ...staged.memory.map((c) => ({ kind: "memory", ...c })),
+        ]
+        if (all.length > 0) {
           const lines = []
-          for (const c of skills) lines.push(`[skill] ${c.name} — ${c.description}`)
-          for (const c of memory) lines.push(`[memory] ${c.fact}`)
+          for (const c of all) {
+            lines.push(c.kind === "memory" ? `[memory] ${c.fact}` : `[skill] ${c.name} — ${c.description}`)
+          }
           const text =
-            `New learning candidates were captured from this session:\n\n` +
+            `New learning candidates were captured:\n\n` +
             lines.join("\n") +
             `\n\nPresent these to the captain and ask whether to approve or reject each one (yes/no per item, or "all"/"none"). ` +
             `On approval, promote: skill → ~/.agents/skills/<name>/SKILL.md (description ≤ 200 chars), memory → ~/.agents/memory/facts.md. ` +

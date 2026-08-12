@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from "node:fs"
+import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -131,6 +131,35 @@ describe("staging and promotion", () => {
     FmLearning.removeCandidate("skills", "junk")
     expect(existsSync(join(FmLearning.stagingSkills(), "junk.json.rejected"))).toBe(true)
     expect(FmLearning.listCandidates("skills").length).toBe(0)
+  })
+
+  test("alreadyCaptured detects a duplicate memory fact in staging", () => {
+    const fact = "I prefer bun over npm for installs"
+    FmLearning.writeJson(join(FmLearning.stagingMemory(), "a.json"), { name: "a", fact })
+    expect(FmLearning.alreadyCaptured("memory", { fact })).toBe(true)
+    expect(FmLearning.alreadyCaptured("memory", { fact: "different fact" })).toBe(false)
+  })
+
+  test("alreadyCaptured detects a fact already promoted to live memory", () => {
+    writeFileSync(FmLearning.liveMemory(), "- I prefer bun over npm for installs\n", "utf8")
+    expect(FmLearning.alreadyCaptured("memory", { fact: "I prefer bun over npm for installs" })).toBe(true)
+  })
+
+  test("alreadyCaptured detects a duplicate skill by name in staging or live", () => {
+    FmLearning.writeJson(join(FmLearning.stagingSkills(), "add-formatter.json"), {
+      name: "add-formatter",
+      description: "x",
+    })
+    expect(FmLearning.alreadyCaptured("skills", { name: "add-formatter" })).toBe(true)
+    FmLearning.promoteCandidate("skills", "add-formatter")
+    expect(FmLearning.alreadyCaptured("skills", { name: "add-formatter" })).toBe(true)
+    expect(FmLearning.alreadyCaptured("skills", { name: "other" })).toBe(false)
+  })
+
+  test("alreadyCaptured treats rejected candidates as captured", () => {
+    FmLearning.writeJson(join(FmLearning.stagingSkills(), "junk.json"), { name: "junk", description: "x" })
+    FmLearning.removeCandidate("skills", "junk")
+    expect(FmLearning.alreadyCaptured("skills", { name: "junk" })).toBe(true)
   })
 })
 

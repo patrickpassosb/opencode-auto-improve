@@ -94,6 +94,39 @@ export function listSkills() {
   }
 }
 
+// True when the same candidate is already staged (active, promoted, or rejected)
+// or already live. Memory dedups on the exact fact; skills dedup on the name.
+export function alreadyCaptured(kind, candidate) {
+  const dir = kind === "memory" ? stagingMemory() : stagingSkills()
+  try {
+    for (const name of readdirSync(dir)) {
+      // active (.json), promoted (.json.promoted), or rejected (.json.rejected)
+      if (!name.startsWith(`${candidate.name}.json`) && !name.endsWith(".json")) continue
+      if (name.endsWith(".json")) {
+        const c = readJson(join(dir, name))
+        if (!c) continue
+        if (kind === "memory" ? c.fact === candidate.fact : c.name === candidate.name) return true
+      } else {
+        // promoted/rejected markers carry the candidate identity in the filename
+        return true
+      }
+    }
+  } catch {
+    // dir may not exist yet
+  }
+  if (kind === "memory") {
+    try {
+      const existing = readFileSync(liveMemory(), "utf8")
+      if (existing.includes(`- ${candidate.fact}`)) return true
+    } catch {
+      // no live memory yet
+    }
+  } else {
+    if (listSkills().includes(candidate.name)) return true
+  }
+  return false
+}
+
 export function promoteSkill(candidate) {
   const dir = join(liveSkills(), candidate.name)
   mkdirSync(dir, { recursive: true })
